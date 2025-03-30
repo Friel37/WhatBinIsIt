@@ -1,0 +1,25 @@
+To create the necessary icons for your PWA:
+
+1. Create two PNG files:
+   - icon-192.png (192x192 pixels)
+   - icon-512.png (512x512 pixels)
+
+2. Design recommendations:
+   - Use a simple, recognizable design (perhaps a recycling bin or trash bin icon)
+   - Use contrasting colors that stand out on both light and dark backgrounds
+   - Keep the design simple and legible even at small sizes
+
+3. You can create these icons using:
+   - Canva (free online tool)
+   - GIMP or Photoshop
+   - Online PWA icon generators
+   - Or use a service like IconKitchen (https://icon.kitchen/)
+
+4. Once created, place these files in the same directory as your index.html file
+
+If you prefer a temporary solution, you can find free icon sets on sites like:
+- https://icons8.com/
+- https://thenounproject.com/
+- https://www.flaticon.com/
+
+Just make sure you follow licensing requirements for any icons you use! 

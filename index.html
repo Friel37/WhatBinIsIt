@@ -22,46 +22,60 @@
     <main class="container">
         <h1>What Bin Is It Next?</h1>
 
-        <form>
-            <fieldset>
-                <legend>Collection Details</legend>
-                <label for="collectionDay">My bin collection day is:
-                    <select id="collectionDay" required>
-                        <option value="" disabled selected>--Select Day--</option>
-                        <option value="1">Monday</option>
-                        <option value="2">Tuesday</option>
-                        <option value="3">Wednesday</option>
-                        <option value="4">Thursday</option>
-                        <option value="5">Friday</option>
-                        <option value="6">Saturday</option>
-                        <option value="0">Sunday</option>
-                    </select>
-                </label>
-
-                <label for="lastCollectionDate">Date of my LAST collection:
-                    <input type="date" id="lastCollectionDate" required>
-                </label>
-
+        <!-- Initial Setup View - Only shown first time -->
+        <div id="setup-container">
+            <form id="setup-form">
                 <fieldset>
-                    <legend>Type of bin collected on that date:</legend>
-                    <label for="lastTypeRecycling">
-                        <input type="radio" id="lastTypeRecycling" name="lastCollectionType" value="Recycling" checked>
-                        Recycling
+                    <legend>Collection Details Setup</legend>
+                    <p>Please enter your bin collection details once and we'll remember them:</p>
+                    <label for="collectionDay">My bin collection day is:
+                        <select id="collectionDay" required>
+                            <option value="" disabled selected>--Select Day--</option>
+                            <option value="1">Monday</option>
+                            <option value="2">Tuesday</option>
+                            <option value="3">Wednesday</option>
+                            <option value="4">Thursday</option>
+                            <option value="5">Friday</option>
+                            <option value="6">Saturday</option>
+                            <option value="0">Sunday</option>
+                        </select>
                     </label>
-                    <label for="lastTypeGeneral">
-                        <input type="radio" id="lastTypeGeneral" name="lastCollectionType" value="General Waste">
-                        General Waste
+
+                    <label for="lastCollectionDate">Date of my LAST collection:
+                        <input type="date" id="lastCollectionDate" required>
                     </label>
+
+                    <fieldset>
+                        <legend>Type of bin collected on that date:</legend>
+                        <label for="lastTypeRecycling">
+                            <input type="radio" id="lastTypeRecycling" name="lastCollectionType" value="Recycling" checked>
+                            Recycling
+                        </label>
+                        <label for="lastTypeGeneral">
+                            <input type="radio" id="lastTypeGeneral" name="lastCollectionType" value="General Waste">
+                            General Waste
+                        </label>
+                    </fieldset>
                 </fieldset>
-            </fieldset>
 
-            <button type="button" id="calculateBtn">Calculate</button>
-        </form>
+                <button type="button" id="calculateBtn">Save & Calculate</button>
+            </form>
+        </div>
 
-        <article id="results-area" aria-live="polite">
-            <p id="result"></p>
-            <p id="nextCollection"></p>
-        </article>
+        <!-- Main App View - Shown after setup -->
+        <div id="main-view" style="display:none">
+            <!-- Collection Results -->
+            <article id="results-area" aria-live="polite">
+                <p id="result"></p>
+                <p id="nextCollection"></p>
+            </article>
+
+            <!-- Reset button to change details -->
+            <div class="action-buttons">
+                <button id="notificationBtn" class="secondary" style="display:none">Enable Reminders</button>
+                <button id="resetBtn" class="outline">Change Collection Details</button>
+            </div>
+        </div>
 
         <!-- Install Prompt Banner (hidden by default) -->
         <div id="installBanner" style="display: none; margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-radius: 8px; text-align: center;">

@@ -18,4 +18,26 @@ button#calculateBtn {
 /* Center the results/error text */
 #results-area p {
     text-align: center;
+}
+
+/* Style for the action buttons container */
+.action-buttons {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+/* Make results area nicely spaced and prominent */
+#results-area {
+    margin: 2rem auto;
+    padding: 1rem;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    max-width: 500px;
+}
+
+/* Style reset button to be less prominent */
+#resetBtn {
+    font-size: 0.9rem;
 } 

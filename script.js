@@ -12,15 +12,70 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     console.log(`Using timezone: ${userTimeZone}`);
 
-    // Get references to all input and output elements
+    // --- UI Elements ---
+    // Setup elements
+    const setupContainer = document.getElementById('setup-container');
+    const setupForm = document.getElementById('setup-form');
     const collectionDaySelect = document.getElementById('collectionDay');
     const lastCollectionDateInput = document.getElementById('lastCollectionDate');
     const lastTypeRecyclingRadio = document.getElementById('lastTypeRecycling');
-    const lastTypeGeneralRadio = document.getElementById('lastTypeGeneral'); // Need this to get the value if selected
+    const lastTypeGeneralRadio = document.getElementById('lastTypeGeneral');
     const calculateBtn = document.getElementById('calculateBtn');
+    
+    // Main view elements
+    const mainView = document.getElementById('main-view');
     const resultElement = document.getElementById('result');
     const nextCollectionElement = document.getElementById('nextCollection');
-    const resultsArea = document.getElementById('results-area'); // Get the results article
+    const resultsArea = document.getElementById('results-area');
+    const resetBtn = document.getElementById('resetBtn');
+    const notificationBtn = document.getElementById('notificationBtn');
+
+    // --- App State Flag ---
+    const APP_SETUP_KEY = 'binApp_setupComplete';
+    let setupComplete = localStorage.getItem(APP_SETUP_KEY) === 'true';
+
+    // --- View Management Functions ---
+    function showSetupView() {
+        mainView.style.display = 'none';
+        setupContainer.style.display = 'block';
+        // Clear any previous error states
+        resultElement.textContent = '';
+        resultElement.removeAttribute('data-error');
+    }
+
+    function showMainView() {
+        setupContainer.style.display = 'none';
+        mainView.style.display = 'block';
+        // Update the display with saved data
+        updateDisplay();
+    }
+
+    // Determine which view to show on start
+    function initializeView() {
+        // If setup is complete, show main view, otherwise show setup
+        if (setupComplete) {
+            showMainView();
+        } else {
+            showSetupView();
+            
+            // Check if we have partial saved data to pre-fill the form
+            const savedData = loadCollectionData();
+            if (savedData) {
+                // Pre-fill form with saved data
+                collectionDaySelect.value = savedData.collectionDay;
+                lastCollectionDateInput.value = savedData.lastCollectionDate;
+                
+                if (savedData.lastCollectionType === 'Recycling') {
+                    lastTypeRecyclingRadio.checked = true;
+                } else {
+                    lastTypeGeneralRadio.checked = true;
+                }
+            }
+        }
+
+        // Check notification permission status and show button if appropriate
+        checkAndUpdateNotificationButton();
+    }
 
     // --- Notification Functions ---
     let notificationsEnabled = false;
@@ -59,6 +114,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
     }
 
+    // Update notification button visibility based on permission state
+    function checkAndUpdateNotificationButton() {
+        // Only show notification button when setup is complete
+        if (setupComplete) {
+            if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+                notificationBtn.style.display = 'inline-block';
+            } else {
+                notificationBtn.style.display = 'none';
+            }
+        }
+    }
+
     // Schedule a notification for an upcoming collection
     function scheduleNotification(collectionType, collectionDate) {
         if (!notificationsEnabled) return false;
@@ -95,40 +162,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Check notification permission when page loads ---
     checkNotificationPermission();
     
-    // Add button to enable notifications if supported but not enabled yet
-    const notificationBtn = document.createElement('button');
-    notificationBtn.textContent = 'Enable Reminders';
-    notificationBtn.className = 'secondary';
-    notificationBtn.style.marginTop = '15px';
-    notificationBtn.style.display = 'none'; // Hide initially
-    
-    // Add notification button after the calculate button
-    document.querySelector('.button-container, form').appendChild(notificationBtn);
-    
-    // Check if we should show the notification button
-    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
-        notificationBtn.style.display = 'inline-block';
-    }
-    
-    // Add click handler for the notification button
-    notificationBtn.addEventListener('click', () => {
-        requestNotificationPermission()
-            .then(granted => {
-                if (granted) {
-                    notificationBtn.style.display = 'none';
-                    alert("Reminders enabled! You'll be notified the evening before collection day.");
-                    
-                    // If we already have collection data, schedule notifications
-                    const savedData = loadCollectionData();
-                    if (savedData && savedData.nextCollectionDate) {
-                        scheduleNotification(savedData.nextCollectionType, savedData.nextCollectionDate);
-                    }
-                } else {
-                    alert("You need to allow notifications for reminders to work.");
-                }
-            });
-    });
-
     // --- Storage Functions ---
     function saveCollectionData(collectionDay, lastCollectionDate, lastCollectionType, nextCollectionDate, nextCollectionType) {
         try {
@@ -142,6 +175,10 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Store when this calculation was performed
             localStorage.setItem('binApp_lastCalculation', new Date().toISOString());
+            
+            // Set the setup complete flag
+            localStorage.setItem(APP_SETUP_KEY, 'true');
+            setupComplete = true;
             
             // Schedule notification if enabled
             if (notificationsEnabled) {
@@ -185,35 +222,75 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Check if we have saved data and load it
-    const savedData = loadCollectionData();
-    if (savedData) {
-        // Pre-fill form with saved data
-        collectionDaySelect.value = savedData.collectionDay;
-        lastCollectionDateInput.value = savedData.lastCollectionDate;
-        
-        if (savedData.lastCollectionType === 'Recycling') {
-            lastTypeRecyclingRadio.checked = true;
-        } else {
-            lastTypeGeneralRadio.checked = true;
-        }
-        
-        // If we have recently calculated data, we could display it immediately
-        // Check if the saved calculation was done recently (within the last 24 hours)
-        const now = new Date();
-        if (savedData.lastCalculation && savedData.nextCollectionDate && 
-            (now - savedData.lastCalculation) < (24 * 60 * 60 * 1000)) {
-            
-            // We have recent data, display it without requiring a new calculation
-            showSavedResults(savedData);
+    function resetApp() {
+        // Keep timezone, but clear all app data
+        if (confirm('Are you sure you want to reset your collection details?')) {
+            localStorage.removeItem('binApp_collectionDay');
+            localStorage.removeItem('binApp_lastCollectionDate');
+            localStorage.removeItem('binApp_lastCollectionType');
+            localStorage.removeItem('binApp_nextCollectionDate'); 
+            localStorage.removeItem('binApp_nextCollectionType');
+            localStorage.removeItem('binApp_lastCalculation');
+            localStorage.removeItem(APP_SETUP_KEY);
+            setupComplete = false;
+            showSetupView();
         }
     }
     
-    // Function to display saved results without recalculation
-    function showSavedResults(data) {
+    // Function to update the display with current calculation
+    function updateDisplay() {
+        const savedData = loadCollectionData();
+        if (!savedData) {
+            console.error("No saved data found but main view requested");
+            showSetupView();
+            return;
+        }
+        
         // Show the results container
         resultsArea.style.display = 'block';
-            
+        
+        // Get the current time info to determine if we need to recalculate
+        const { localDateMidnight, currentLocalHour } = getLocalTimeInfo(userTimeZone);
+        const lastCalcTime = savedData.lastCalculation || new Date(0);
+        const needsRecalculation = isRecalculationNeeded(lastCalcTime, savedData);
+        
+        if (needsRecalculation) {
+            // Recalculate based on the saved collection day and type
+            performCalculation(
+                savedData.collectionDay,
+                savedData.lastCollectionDate, 
+                savedData.lastCollectionType,
+                true // This is a refresh, not initial setup
+            );
+        } else {
+            // Use the saved calculation results
+            displayResults(savedData);
+        }
+        
+        // Update notification button visibility
+        checkAndUpdateNotificationButton();
+    }
+    
+    // Check if we need to recalculate (e.g., day changed, calculations are old)
+    function isRecalculationNeeded(lastCalcTime, savedData) {
+        // Always recalculate if it's been more than 12 hours
+        const RECALC_INTERVAL = 12 * 60 * 60 * 1000; // 12 hours in ms
+        const now = new Date();
+        
+        if ((now - lastCalcTime) > RECALC_INTERVAL) {
+            return true;
+        }
+        
+        // If the next collection date is in the past, recalculate
+        if (savedData.nextCollectionDate && savedData.nextCollectionDate < now) {
+            return true;
+        }
+        
+        return false;
+    }
+    
+    // Display results from saved or calculated data
+    function displayResults(data) {
         // Format the next collection date for display
         let nextDateDisplayString;
         const { localDateMidnight } = getLocalTimeInfo(userTimeZone);
@@ -245,9 +322,6 @@ document.addEventListener('DOMContentLoaded', () => {
                                      `Following collection: <strong>${followingType}</strong> on <strong>${formatDate(followingDate, userTimeZone)}</strong>.`;
     }
 
-    // Hide results area initially
-    resultsArea.style.display = 'none';
-
     // Helper function to format dates nicely using the detected/default timezone
     function formatDate(date, timeZone) {
         const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timeZone };
@@ -277,45 +351,46 @@ document.addEventListener('DOMContentLoaded', () => {
         return { localDateMidnight, currentLocalHour };
     }
 
-    calculateBtn.addEventListener('click', () => {
+    // Main calculation function that can be called from setup or refreshes
+    function performCalculation(collectionDay, lastCollectionDateValue, lastCollectionType, isRefresh = false) {
         // --- Clear previous results and errors ---
         resultElement.textContent = ''; // Clear error message
         nextCollectionElement.textContent = ''; // Clear previous results
-        resultsArea.style.display = 'none'; // Hide results area
         resultElement.removeAttribute('data-error'); // Remove error styling attribute if present
 
-        // --- Get and Validate Inputs ---
-        const collectionDay = parseInt(collectionDaySelect.value, 10);
+        // --- Validate Inputs ---
         if (isNaN(collectionDay)) {
             resultElement.textContent = 'Please select your bin collection day.';
-            resultElement.setAttribute('data-error', 'true'); // Add attribute for potential styling
-            resultsArea.style.display = 'block'; // Show results area for error
-            return;
+            resultElement.setAttribute('data-error', 'true');
+            return false;
         }
 
-        const lastCollectionDateValue = lastCollectionDateInput.value;
         if (!lastCollectionDateValue) {
             resultElement.textContent = 'Please select the date of your last collection.';
             resultElement.setAttribute('data-error', 'true');
-            resultsArea.style.display = 'block';
-            return;
+            return false;
         }
 
         // Parse the last collection date using UTC
-        const parts = lastCollectionDateValue.split('-');
-        const year = parseInt(parts[0], 10);
-        const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
-        const day = parseInt(parts[2], 10);
-        const lastCollectionDate = new Date(Date.UTC(year, month, day));
+        let parts;
+        let lastCollectionDate;
+        
+        // Handle date being either a string (from input) or Date object (from saved data)
+        if (typeof lastCollectionDateValue === 'string') {
+            parts = lastCollectionDateValue.split('-');
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1; // Month is 0-indexed
+            const day = parseInt(parts[2], 10);
+            lastCollectionDate = new Date(Date.UTC(year, month, day));
+        } else {
+            lastCollectionDate = lastCollectionDateValue;
+        }
 
         if (isNaN(lastCollectionDate.getTime())) { // Check if the date is valid
              resultElement.textContent = 'Invalid date entered for last collection.';
              resultElement.setAttribute('data-error', 'true');
-             resultsArea.style.display = 'block';
-             return;
+             return false;
         }
-
-        const lastCollectionType = document.querySelector('input[name="lastCollectionType"]:checked').value;
 
         // Get the current date (midnight UTC representing local date)
         const { localDateMidnight, currentLocalHour } = getLocalTimeInfo(userTimeZone);
@@ -324,8 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lastCollectionDate.getTime() > localDateMidnight.getTime()) {
             resultElement.textContent = 'Last collection date cannot be in the future.';
             resultElement.setAttribute('data-error', 'true');
-            resultsArea.style.display = 'block';
-            return;
+            return false;
         }
 
         // --- Core Calculation Logic ---
@@ -411,15 +485,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Optional: Log values for debugging
         console.log("--- Inputs ---");
-        // ...
-        console.log("--- Reference ---");
-        // ...
+        console.log("Collection Day Selected (0-6):", collectionDay);
+        console.log("Last Collection Date:", lastCollectionDate.toUTCString());
+        console.log("Last Collection Type:", lastCollectionType);
         console.log("--- Current Week (Local) ---");
         console.log("Current Date (Local Midnight UTC):", localDateMidnight.toUTCString());
         console.log("Current Hour (Local):", currentLocalHour);
         console.log("Weeks Since Reference Start:", weeksDifferenceCurrent);
         console.log("Current Cycle Week (0 or 1):", currentCycleWeek);
-         console.log("--- Next Collections (Calculated based on Local day & time) ---");
+        console.log("--- Next Collections (Calculated based on Local day & time) ---");
         console.log("Potential Next Collection Date (UTC Midnight):", potentialNextCollectionDate.toUTCString());
         console.log("Final Next Collection Date (UTC Midnight):", nextCollectionDate.toUTCString());
         console.log("Weeks Diff for Next Collection:", weeksDifferenceNext);
@@ -427,16 +501,59 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Next Collection Type:", nextCollectionType);
         console.log("Following Collection Date (UTC Midnight):", followingCollectionDate.toUTCString());
         console.log("Following Collection Type:", followingCollectionType);
-        console.log("--- Display Strings --- ");
-        console.log("Next Date Display:", nextDateDisplayString);
 
         // After calculation is successful and display is updated, save the data
+        // Don't create a string version of the lastCollectionDate if it's a refresh
+        const dateToSave = typeof lastCollectionDateValue === 'string' ? 
+                           lastCollectionDateValue : lastCollectionDate.toISOString().split('T')[0];
+        
         saveCollectionData(
             collectionDay, // Collection day (0-6)
-            lastCollectionDateInput.value, // Last collection date (YYYY-MM-DD string)
+            dateToSave, // Last collection date (YYYY-MM-DD string)
             lastCollectionType, // Last collection type (string)
             nextCollectionDate, // Next collection date (Date object)
             nextCollectionType // Next collection type (string)
         );
+        
+        return true;
+    }
+
+    // --- Event Listeners ---
+    // Calculate button click handler (initial setup)
+    calculateBtn.addEventListener('click', () => {
+        const collectionDay = parseInt(collectionDaySelect.value, 10);
+        const lastCollectionDateValue = lastCollectionDateInput.value;
+        const lastCollectionType = document.querySelector('input[name="lastCollectionType"]:checked').value;
+        
+        const success = performCalculation(collectionDay, lastCollectionDateValue, lastCollectionType);
+        if (success) {
+            // Switch to main view if calculation was successful
+            showMainView();
+        }
     });
+    
+    // Reset button click handler
+    resetBtn.addEventListener('click', resetApp);
+    
+    // Notification button click handler
+    notificationBtn.addEventListener('click', () => {
+        requestNotificationPermission()
+            .then(granted => {
+                if (granted) {
+                    notificationBtn.style.display = 'none';
+                    alert("Reminders enabled! You'll be notified the evening before collection day.");
+                    
+                    // If we already have collection data, schedule notifications
+                    const savedData = loadCollectionData();
+                    if (savedData && savedData.nextCollectionDate) {
+                        scheduleNotification(savedData.nextCollectionType, savedData.nextCollectionDate);
+                    }
+                } else {
+                    alert("You need to allow notifications for reminders to work.");
+                }
+            });
+    });
+
+    // Initialize the app with the correct view
+    initializeView();
 }); 

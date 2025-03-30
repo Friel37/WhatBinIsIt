@@ -1,0 +1,21 @@
+main.container {
+    text-align: center;
+}
+
+/* Keep form elements aligned reasonably within the centered container */
+form {
+    display: inline-block; /* Allow the form to be centered */
+    text-align: left; /* Align labels and inputs left within the form */
+    max-width: 100%; /* Ensure form doesn't overflow */
+}
+
+/* Center the button separately */
+button#calculateBtn {
+    display: block; /* Make button a block element */
+    margin: 1.5rem auto 0; /* Add top margin and auto side margins for centering */
+}
+
+/* Center the results/error text */
+#results-area p {
+    text-align: center;
+} 

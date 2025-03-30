@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>What Bin Is It Next?</title>
+    <!-- Link to Pico.css CDN -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@1/css/pico.min.css">
+    <!-- Link to Custom CSS (Loads After Pico) -->
+    <link rel="stylesheet" href="custom.css">
+    <!-- Removed link to style.css -->
+    <!-- <link rel="stylesheet" href="style.css"> -->
+</head>
+<body>
+    <main class="container">
+        <h1>What Bin Is It Next?</h1>
+
+        <form>
+            <fieldset>
+                <legend>Collection Details</legend>
+                <label for="collectionDay">My bin collection day is:
+                    <select id="collectionDay" required>
+                        <option value="" disabled selected>--Select Day--</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                        <option value="0">Sunday</option>
+                    </select>
+                </label>
+
+                <label for="lastCollectionDate">Date of my LAST collection:
+                    <input type="date" id="lastCollectionDate" required>
+                </label>
+
+                <fieldset>
+                    <legend>Type of bin collected on that date:</legend>
+                    <label for="lastTypeRecycling">
+                        <input type="radio" id="lastTypeRecycling" name="lastCollectionType" value="Recycling" checked>
+                        Recycling
+                    </label>
+                    <label for="lastTypeGeneral">
+                        <input type="radio" id="lastTypeGeneral" name="lastCollectionType" value="General Waste">
+                        General Waste
+                    </label>
+                </fieldset>
+            </fieldset>
+
+            <!-- Button is automatically handled by Pico form styling -->
+            <button type="button" id="calculateBtn">Calculate</button>
+        </form>
+
+        <article id="results-area" aria-live="polite">
+             <!-- Error messages will appear here -->
+            <p id="result"></p>
+            <!-- Next collection info will appear here -->
+            <p id="nextCollection"></p>
+        </article>
+
+        <script src="script.js"></script>
+    </main>
+</body>
+</html> 

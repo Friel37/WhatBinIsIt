@@ -22,6 +22,229 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextCollectionElement = document.getElementById('nextCollection');
     const resultsArea = document.getElementById('results-area'); // Get the results article
 
+    // --- Notification Functions ---
+    let notificationsEnabled = false;
+
+    // Check if notifications are supported and permission has been granted
+    function checkNotificationPermission() {
+        if (!('Notification' in window)) {
+            console.log("This browser does not support notifications");
+            return false;
+        }
+        
+        if (Notification.permission === 'granted') {
+            notificationsEnabled = true;
+            return true;
+        } else if (Notification.permission !== 'denied') {
+            return false;
+        }
+        return false;
+    }
+
+    // Request permission for notifications
+    function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+            alert("This browser does not support desktop notifications");
+            return Promise.resolve(false);
+        }
+        
+        return Notification.requestPermission()
+            .then(permission => {
+                if (permission === 'granted') {
+                    notificationsEnabled = true;
+                    return true;
+                } else {
+                    return false;
+                }
+            });
+    }
+
+    // Schedule a notification for an upcoming collection
+    function scheduleNotification(collectionType, collectionDate) {
+        if (!notificationsEnabled) return false;
+        
+        // Get the day before collection at 6 PM
+        const notificationDate = new Date(collectionDate);
+        notificationDate.setDate(collectionDate.getDate() - 1); // Day before
+        notificationDate.setHours(18, 0, 0, 0); // 6 PM
+        
+        const now = new Date();
+        
+        // Calculate time difference in milliseconds
+        const timeUntilNotification = notificationDate.getTime() - now.getTime();
+        
+        // Only schedule if it's in the future
+        if (timeUntilNotification > 0) {
+            console.log(`Scheduling notification for ${notificationDate.toLocaleString()}`);
+            
+            // Use setTimeout for demo purposes
+            // In a real app, you might want to use a service worker's Push API for more reliable scheduling
+            setTimeout(() => {
+                new Notification("Bin Collection Reminder", {
+                    body: `Don't forget to put your ${collectionType} bin out for tomorrow's collection!`,
+                    icon: "icon-192.png"
+                });
+            }, timeUntilNotification);
+            
+            return true;
+        }
+        
+        return false;
+    }
+
+    // --- Check notification permission when page loads ---
+    checkNotificationPermission();
+    
+    // Add button to enable notifications if supported but not enabled yet
+    const notificationBtn = document.createElement('button');
+    notificationBtn.textContent = 'Enable Reminders';
+    notificationBtn.className = 'secondary';
+    notificationBtn.style.marginTop = '15px';
+    notificationBtn.style.display = 'none'; // Hide initially
+    
+    // Add notification button after the calculate button
+    document.querySelector('.button-container, form').appendChild(notificationBtn);
+    
+    // Check if we should show the notification button
+    if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+        notificationBtn.style.display = 'inline-block';
+    }
+    
+    // Add click handler for the notification button
+    notificationBtn.addEventListener('click', () => {
+        requestNotificationPermission()
+            .then(granted => {
+                if (granted) {
+                    notificationBtn.style.display = 'none';
+                    alert("Reminders enabled! You'll be notified the evening before collection day.");
+                    
+                    // If we already have collection data, schedule notifications
+                    const savedData = loadCollectionData();
+                    if (savedData && savedData.nextCollectionDate) {
+                        scheduleNotification(savedData.nextCollectionType, savedData.nextCollectionDate);
+                    }
+                } else {
+                    alert("You need to allow notifications for reminders to work.");
+                }
+            });
+    });
+
+    // --- Storage Functions ---
+    function saveCollectionData(collectionDay, lastCollectionDate, lastCollectionType, nextCollectionDate, nextCollectionType) {
+        try {
+            localStorage.setItem('binApp_collectionDay', collectionDay);
+            localStorage.setItem('binApp_lastCollectionDate', lastCollectionDate);
+            localStorage.setItem('binApp_lastCollectionType', lastCollectionType);
+            
+            // Store the calculated next collection details for quick access
+            localStorage.setItem('binApp_nextCollectionDate', nextCollectionDate.toISOString());
+            localStorage.setItem('binApp_nextCollectionType', nextCollectionType);
+            
+            // Store when this calculation was performed
+            localStorage.setItem('binApp_lastCalculation', new Date().toISOString());
+            
+            // Schedule notification if enabled
+            if (notificationsEnabled) {
+                scheduleNotification(nextCollectionType, nextCollectionDate);
+            }
+            
+            return true;
+        } catch (e) {
+            console.error('Error saving data to localStorage:', e);
+            return false;
+        }
+    }
+
+    function loadCollectionData() {
+        try {
+            // Get core saved values
+            const data = {
+                collectionDay: localStorage.getItem('binApp_collectionDay'),
+                lastCollectionDate: localStorage.getItem('binApp_lastCollectionDate'),
+                lastCollectionType: localStorage.getItem('binApp_lastCollectionType'),
+                nextCollectionDate: localStorage.getItem('binApp_nextCollectionDate'),
+                nextCollectionType: localStorage.getItem('binApp_nextCollectionType'),
+                lastCalculation: localStorage.getItem('binApp_lastCalculation')
+            };
+            
+            // Check if we have valid data
+            if (data.collectionDay && data.lastCollectionDate && data.lastCollectionType) {
+                // Convert date strings back to Date objects if needed
+                if (data.nextCollectionDate) {
+                    data.nextCollectionDate = new Date(data.nextCollectionDate);
+                }
+                if (data.lastCalculation) {
+                    data.lastCalculation = new Date(data.lastCalculation);
+                }
+                return data;
+            }
+            return null;
+        } catch (e) {
+            console.error('Error loading data from localStorage:', e);
+            return null;
+        }
+    }
+
+    // Check if we have saved data and load it
+    const savedData = loadCollectionData();
+    if (savedData) {
+        // Pre-fill form with saved data
+        collectionDaySelect.value = savedData.collectionDay;
+        lastCollectionDateInput.value = savedData.lastCollectionDate;
+        
+        if (savedData.lastCollectionType === 'Recycling') {
+            lastTypeRecyclingRadio.checked = true;
+        } else {
+            lastTypeGeneralRadio.checked = true;
+        }
+        
+        // If we have recently calculated data, we could display it immediately
+        // Check if the saved calculation was done recently (within the last 24 hours)
+        const now = new Date();
+        if (savedData.lastCalculation && savedData.nextCollectionDate && 
+            (now - savedData.lastCalculation) < (24 * 60 * 60 * 1000)) {
+            
+            // We have recent data, display it without requiring a new calculation
+            showSavedResults(savedData);
+        }
+    }
+    
+    // Function to display saved results without recalculation
+    function showSavedResults(data) {
+        // Show the results container
+        resultsArea.style.display = 'block';
+            
+        // Format the next collection date for display
+        let nextDateDisplayString;
+        const { localDateMidnight } = getLocalTimeInfo(userTimeZone);
+        const nextDate = data.nextCollectionDate;
+        
+        // Create tomorrow date for comparison
+        const tomorrowLocal = new Date(localDateMidnight);
+        tomorrowLocal.setUTCDate(localDateMidnight.getUTCDate() + 1);
+        
+        // Determine display text based on date
+        if (nextDate.toDateString() === localDateMidnight.toDateString()) {
+            // The collection is today
+            nextDateDisplayString = "today";
+        } else if (nextDate.toDateString() === tomorrowLocal.toDateString()) {
+            // The collection is tomorrow
+            nextDateDisplayString = "tomorrow";
+        } else {
+            // Format the date
+            nextDateDisplayString = `on <strong>${formatDate(nextDate, userTimeZone)}</strong>`;
+        }
+        
+        // Calculate the following collection date (add 7 days)
+        const followingDate = new Date(nextDate);
+        followingDate.setDate(nextDate.getDate() + 7);
+        const followingType = (data.nextCollectionType === 'Recycling') ? 'General Waste' : 'Recycling';
+        
+        // Update the display
+        nextCollectionElement.innerHTML = `Next collection: <strong>${data.nextCollectionType}</strong> ${nextDateDisplayString}.<br>` +
+                                     `Following collection: <strong>${followingType}</strong> on <strong>${formatDate(followingDate, userTimeZone)}</strong>.`;
+    }
+
     // Hide results area initially
     resultsArea.style.display = 'none';
 
@@ -207,5 +430,13 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("--- Display Strings --- ");
         console.log("Next Date Display:", nextDateDisplayString);
 
+        // After calculation is successful and display is updated, save the data
+        saveCollectionData(
+            collectionDay, // Collection day (0-6)
+            lastCollectionDateInput.value, // Last collection date (YYYY-MM-DD string)
+            lastCollectionType, // Last collection type (string)
+            nextCollectionDate, // Next collection date (Date object)
+            nextCollectionType // Next collection type (string)
+        );
     });
 }); 
